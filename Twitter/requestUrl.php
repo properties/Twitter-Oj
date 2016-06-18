@@ -10,7 +10,6 @@ hp<?php
   define('DB_USER', 'X');
   define('DB_PASS', 'X');
   define('DB_DATABASE', 'X');
-  define('DB_TABLE', 'twitter');
 
   \Corecode\Corecode::setConsumerKey(KEY, KEYSECRET);
   $Corecode = \Corecode\Corecode::getInstance();
