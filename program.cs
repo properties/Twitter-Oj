@@ -24,7 +24,7 @@ namespace Corecode_Twitter
                 total_done++;
                 string[] Account = line.Split(':');
                 string username_or_email = Account.Length >= 1 ? Account[0] : null;
-                string password = Account.Length >= 2 ? Account[1] : null;
+                string password = Account.Length >= 2 ? Account[1] : null;//
 
                 Console.WriteLine(addTwitter(username_or_email, password));
             }
