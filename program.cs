@@ -15,7 +15,6 @@ namespace Corecode_Twitter
             Console.Write("Combo List Path: ");
             string combolist = Console.ReadLine();
 
-
             StreamReader ImportFile = new StreamReader(combolist);
             string line;
 
