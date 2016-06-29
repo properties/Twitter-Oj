@@ -9,7 +9,7 @@ hp<?php
   define('DB_HOST', 'localhost');
   define('DB_USER', 'X');
   define('DB_PASS', 'X');
-  define('DB_DATABASE', 'X');
+  define('DB_DATABASE', 'X'); // Twitte Oj
 
   \Corecode\Corecode::setConsumerKey(KEY, KEYSECRET);
   $Corecode = \Corecode\Corecode::getInstance();
