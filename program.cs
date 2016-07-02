@@ -72,7 +72,7 @@ namespace Twitter_Oj
                 string password = Account.Length >= p_split + 1 ? Account[p_split] : null;
 
                 //#> Create new Twitter
-                Twitter(username_or_email, password.ToLower());
+                Twitter(username_or_email, password);
             }
 
             //#> Done with all accounts
